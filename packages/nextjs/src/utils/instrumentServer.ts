@@ -145,6 +145,7 @@ function makeWrappedHandlerGetter(origHandlerGetter: HandlerGetter): WrappedHand
  */
 function makeWrappedErrorLogger(origErrorLogger: ErrorLogger): WrappedErrorLogger {
   return function(this: Server, err: Error): void {
+    console.log('in wrapped error logger');
     // TODO add context data here
     captureException(err);
     return origErrorLogger.call(this, err);

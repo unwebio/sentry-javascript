@@ -90,7 +90,7 @@ export const withSentry = (handler: NextApiHandler): WrappedNextApiHandler => {
           captureException(e);
         }
         console.log('NOT about to rethrow error');
-        // throw e;
+        throw e;
       }
     });
 
