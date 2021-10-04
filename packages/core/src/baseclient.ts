@@ -101,6 +101,7 @@ export abstract class BaseClient<B extends Backend, O extends Options> implement
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
   public captureException(exception: any, hint?: EventHint, scope?: Scope): string | undefined {
+    console.log('in captureException');
     let eventId: string | undefined = hint && hint.event_id;
 
     this._process(
