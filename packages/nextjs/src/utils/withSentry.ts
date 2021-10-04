@@ -10,7 +10,7 @@ const { parseRequest } = Handlers;
 // purely for clarity
 type WrappedNextApiHandler = NextApiHandler;
 
-type AugmentedResponse = NextApiResponse & { __sentryTransaction?: Transaction };
+type AugmentedResponse = NextApiResponse & { __sentryTransaction?: Transaction; __sentryCapturedError?: unknown };
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export const withSentry = (handler: NextApiHandler): WrappedNextApiHandler => {
@@ -89,10 +89,12 @@ export const withSentry = (handler: NextApiHandler): WrappedNextApiHandler => {
           console.log('about to capture the error');
           captureException(e);
         }
-        console.log('about to NOT rethrow error and call `sendError` instead');
+        console.log('about to call res.end() with the captured error');
         // throw e;
         console.error(e);
-        sendError(res, 500, 'Internal Server Error');
+        (res as AugmentedResponse).__sentryCapturedError = e;
+        // sendError(res, 500, 'Internal Server Error');
+        res.end(e);
       }
     });
 
@@ -107,7 +109,8 @@ function wrapEndMethod(origEnd: ResponseEndMethod): WrappedResponseEndMethod {
   console.log('wrapping end method');
   return async function newEnd(this: AugmentedResponse, ...args: unknown[]) {
     console.log('in newEnd');
-    const transaction = this.__sentryTransaction;
+    // const transaction = this.__sentryTransaction;
+    const { __sentryTransaction: transaction, __sentryCapturedError: capturedError } = this;
 
     if (transaction) {
       transaction.setHttpStatus(this.statusCode);
@@ -131,15 +134,19 @@ function wrapEndMethod(origEnd: ResponseEndMethod): WrappedResponseEndMethod {
       logger.log('Done flushing events');
     } catch (e) {
       logger.log(`Error while flushing events:\n${e}`);
+    } finally {
+      if (capturedError) {
+        console.log('about to rethrow error');
+        throw capturedError;
+      }
+      console.log('about to call origEnd');
+      return origEnd.call(this, ...args);
     }
-
-    console.log('about to call origEnd');
-    return origEnd.call(this, ...args);
   };
 }
 
-function sendError(res: NextApiResponse, statusCode: number, message: string): void {
-  res.statusCode = statusCode;
-  res.statusMessage = message;
-  res.end(message);
-}
+// function sendError(res: NextApiResponse, statusCode: number, message: string): void {
+//   res.statusCode = statusCode;
+//   res.statusMessage = message;
+//   res.end(message);
+// }
