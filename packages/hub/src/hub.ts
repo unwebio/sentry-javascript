@@ -186,6 +186,8 @@ export class Hub implements HubInterface {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
   public captureException(exception: any, hint?: EventHint): string {
+    console.log('in captureException in hub');
+
     const eventId = (this._lastEventId = uuid4());
     let finalHint = hint;
 
@@ -248,6 +250,8 @@ export class Hub implements HubInterface {
    * @inheritDoc
    */
   public captureEvent(event: Event, hint?: EventHint): string {
+    console.log('in captureEvent in hub');
+
     const eventId = uuid4();
     if (event.type !== 'transaction') {
       this._lastEventId = eventId;
