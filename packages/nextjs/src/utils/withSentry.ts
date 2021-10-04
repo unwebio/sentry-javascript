@@ -89,8 +89,9 @@ export const withSentry = (handler: NextApiHandler): WrappedNextApiHandler => {
           console.log('about to capture the error');
           captureException(e);
         }
-        console.log('about to rethrow error');
-        throw e;
+        console.log('about to NOT rethrow error and call `sendError` instead');
+        // throw e;
+        sendError(res, 500, 'Internal Server Error');
       }
     });
 
@@ -134,4 +135,10 @@ function wrapEndMethod(origEnd: ResponseEndMethod): WrappedResponseEndMethod {
     console.log('about to call origEnd');
     return origEnd.call(this, ...args);
   };
+}
+
+function sendError(res: NextApiResponse, statusCode: number, message: string): void {
+  res.statusCode = statusCode;
+  res.statusMessage = message;
+  res.end(message);
 }
