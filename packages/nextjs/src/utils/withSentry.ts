@@ -91,6 +91,7 @@ export const withSentry = (handler: NextApiHandler): WrappedNextApiHandler => {
         }
         console.log('about to NOT rethrow error and call `sendError` instead');
         // throw e;
+        console.error(e);
         sendError(res, 500, 'Internal Server Error');
       }
     });
