@@ -74,17 +74,22 @@ export const withSentry = (handler: NextApiHandler): WrappedNextApiHandler => {
       }
 
       try {
+        console.log('about to call handler');
         return await handler(req, res); // Call original handler
       } catch (e) {
+        console.log('in catch right after calling handler');
         if (currentScope) {
           currentScope.addEventProcessor(event => {
+            console.log('in event processor adding exception mechanism');
             addExceptionMechanism(event, {
               handled: false,
             });
             return event;
           });
+          console.log('about to capture the error');
           captureException(e);
         }
+        console.log('about to rethrow error');
         throw e;
       }
     });
@@ -97,7 +102,9 @@ type ResponseEndMethod = AugmentedResponse['end'];
 type WrappedResponseEndMethod = AugmentedResponse['end'];
 
 function wrapEndMethod(origEnd: ResponseEndMethod): WrappedResponseEndMethod {
+  console.log('wrapping end method');
   return async function newEnd(this: AugmentedResponse, ...args: unknown[]) {
+    console.log('in newEnd');
     const transaction = this.__sentryTransaction;
 
     if (transaction) {
@@ -124,6 +131,7 @@ function wrapEndMethod(origEnd: ResponseEndMethod): WrappedResponseEndMethod {
       logger.log(`Error while flushing events:\n${e}`);
     }
 
+    console.log('about to call origEnd');
     return origEnd.call(this, ...args);
   };
 }
