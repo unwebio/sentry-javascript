@@ -77,9 +77,11 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
       }
 
       try {
+        console.log('about to call handler');
         return await origHandler(req, res);
       } catch (e) {
-        // eslint-disable-next-line no-console
+        console.log('in catch right after calling handler');
+
         console.error(e);
 
         // In case we have a primitive, wrap it in the equivalent wrapper class (string -> String, etc.) so that we can
@@ -89,6 +91,7 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
         const objectifiedErr = objectify(e);
         if (currentScope) {
           currentScope.addEventProcessor(event => {
+            console.log('in event processor adding exception mechanism');
             addExceptionMechanism(event, {
               type: 'instrument',
               handled: true,
@@ -99,10 +102,11 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
             });
             return event;
           });
-
+          console.log('about to capture the error');
           captureException(objectifiedErr);
         }
         (res as AugmentedNextApiResponse).__sentryCapturedError = objectifiedErr;
+        console.log('about to call res.end()');
         res.end();
       }
     });
@@ -115,7 +119,9 @@ type ResponseEndMethod = AugmentedNextApiResponse['end'];
 type WrappedResponseEndMethod = AugmentedNextApiResponse['end'];
 
 function wrapEndMethod(origEnd: ResponseEndMethod): WrappedResponseEndMethod {
+  console.log('wrapping end method');
   return async function newEnd(this: AugmentedNextApiResponse, ...args: unknown[]) {
+    console.log('in newEnd');
     const { __sentryTransaction: transaction, __sentryCapturedError: capturedError } = this;
 
     if (transaction) {
