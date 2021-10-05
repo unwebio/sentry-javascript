@@ -102,8 +102,8 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
 
           captureException(objectifiedErr);
         }
-        throw objectifiedErr;
-        (res as AugmentedNextApiResponse).__sentryCapturedError = e;
+        (res as AugmentedNextApiResponse).__sentryCapturedError = objectifiedErr;
+        res.end();
       }
     });
 
@@ -132,8 +132,8 @@ function wrapEndMethod(origEnd: ResponseEndMethod): WrappedResponseEndMethod {
       await transactionFinished;
     }
 
-    // flush the event queue to ensure that events get sent to Sentry before the response is finished and the lambda
-    // ends
+    // Flush the event queue to ensure that events get sent to Sentry before the response is finished and the lambda
+    // ends. If there was an error, rethrow it so that the normal exception-handling mechanisms can apply.
     try {
       logger.log('Flushing events...');
       await flush(2000);
@@ -142,6 +142,11 @@ function wrapEndMethod(origEnd: ResponseEndMethod): WrappedResponseEndMethod {
       logger.log(`Error while flushing events:\n${e}`);
     }
 
+    if (capturedError) {
+      console.log('about to rethrow error');
+      throw capturedError;
+    }
+    console.log('about to call origEnd');
     return origEnd.call(this, ...args);
   };
 }
