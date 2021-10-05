@@ -79,12 +79,14 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
       try {
         return await origHandler(req, res);
       } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error(e);
+
         // In case we have a primitive, wrap it in the equivalent wrapper class (string -> String, etc.) so that we can
         // store a seen flag on it. (Because of the one-way-on-Vercel-one-way-off-of-Vercel approach we've been forced
         // to take, it can happen that the same thrown object gets caught in two different ways, and flagging it is a
         // way to prevent it from actually being reported twice.)
         const objectifiedErr = objectify(e);
-
         if (currentScope) {
           currentScope.addEventProcessor(event => {
             addExceptionMechanism(event, {
