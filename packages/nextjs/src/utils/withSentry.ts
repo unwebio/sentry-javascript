@@ -12,6 +12,7 @@ type WrappedNextApiHandler = NextApiHandler;
 
 export type AugmentedNextApiResponse = NextApiResponse & {
   __sentryTransaction?: Transaction;
+  __sentryCapturedError?: unknown;
 };
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
@@ -99,11 +100,8 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
 
           captureException(objectifiedErr);
         }
-
-        // We rethrow here so that nextjs can do with the error whatever it would normally do. (Sometimes "whatever it
-        // would normally do" is to allow the error to bubble up to the global handlers - another reason we need to mark
-        // the error as already having been captured.)
         throw objectifiedErr;
+        (res as AugmentedNextApiResponse).__sentryCapturedError = e;
       }
     });
 
@@ -116,7 +114,7 @@ type WrappedResponseEndMethod = AugmentedNextApiResponse['end'];
 
 function wrapEndMethod(origEnd: ResponseEndMethod): WrappedResponseEndMethod {
   return async function newEnd(this: AugmentedNextApiResponse, ...args: unknown[]) {
-    const transaction = this.__sentryTransaction;
+    const { __sentryTransaction: transaction, __sentryCapturedError: capturedError } = this;
 
     if (transaction) {
       transaction.setHttpStatus(this.statusCode);
