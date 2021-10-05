@@ -111,7 +111,7 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
       }
     });
 
-    return await boundHandler();
+    return boundHandler();
   };
 };
 
