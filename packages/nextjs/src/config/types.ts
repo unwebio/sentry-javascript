@@ -7,13 +7,15 @@ export type SentryWebpackPlugin = { options: SentryWebpackPluginOptions };
  * Overall Nextjs config
  */
 
-export type ExportedNextConfig = NextConfigObject | NextConfigFunction;
+export type ExportedNextConfig = Partial<NextConfigObject> | NextConfigFunction;
 
 export type NextConfigObject = {
   // custom webpack options
-  webpack?: WebpackConfigFunction;
+  webpack: WebpackConfigFunction;
   // whether to build serverless functions for all pages, not just API routes
-  target?: 'server' | 'experimental-serverless-trace';
+  target: 'server' | 'experimental-serverless-trace';
+  // the output directory for the built app (defaults to ".next")
+  distDir: string;
   sentry?: {
     disableServerWebpackPlugin?: boolean;
     disableClientWebpackPlugin?: boolean;
@@ -23,10 +25,7 @@ export type NextConfigObject = {
   [key: string]: unknown;
 };
 
-export type NextConfigFunction = (
-  phase: string,
-  defaults: { defaultConfig: { [key: string]: unknown } },
-) => NextConfigObject;
+export type NextConfigFunction = (phase: string, defaults: { defaultConfig: NextConfigObject }) => NextConfigObject;
 
 /**
  * Webpack config
@@ -56,7 +55,7 @@ export type BuildContext = {
   isServer: boolean;
   buildId: string;
   dir: string;
-  config: Partial<NextConfigObject>;
+  config: NextConfigObject;
   webpack: { version: string };
 };
 
