@@ -6,7 +6,8 @@ import { NextApiRequest } from 'next';
 import { AugmentedNextApiResponse, withSentry } from '../../src/utils/withSentry';
 
 const loggerSpy = jest.spyOn(logger, 'log');
-const captureExceptionSpy = jest.spyOn(Sentry, 'captureException');
+// Prevent captureException from creating and leaving an open handle after test already finished
+const captureExceptionSpy = jest.spyOn(Sentry, 'captureException').mockImplementation(jest.fn());
 
 describe('withSentry', () => {
   it('flushes events before rethrowing error', async () => {
@@ -16,6 +17,7 @@ describe('withSentry', () => {
       }),
     );
     makeMain(hub);
+
     const req = { url: 'http://dogs.are.great' } as NextApiRequest;
     const res = ({ end: async () => undefined } as unknown) as AugmentedNextApiResponse;
     const error = new Error('Charlie ate the flip-flops. :-(');
