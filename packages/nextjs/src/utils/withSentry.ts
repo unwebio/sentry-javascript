@@ -205,7 +205,8 @@ async function finishSentryWork(res: AugmentedNextApiResponse): Promise<void> {
   // ends. If there was an error, rethrow it so that the normal exception-handling mechanisms can apply.
   try {
     logger.log('Flushing events...');
-    await flush(2000);
+    const flushResult = await flush(2000);
+    console.log({ flushResult });
     logger.log('Done flushing events');
   } catch (e) {
     logger.log(`Error while flushing events:\n${e}`);
