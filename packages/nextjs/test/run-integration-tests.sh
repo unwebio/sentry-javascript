@@ -30,7 +30,8 @@ echo "Running integration tests on Node $NODE_VERSION"
 # make a backup of our config file so we can restore it when we're done
 mv next.config.js next.config.js.bak
 
-for NEXTJS_VERSION in 10 11 12; do
+for NEXTJS_VERSION in 12; do
+  # for NEXTJS_VERSION in 10 11 12; do
 
   # Next 10 requires at least Node v10
   if [ "$NODE_MAJOR" -lt "10" ]; then
@@ -87,7 +88,8 @@ for NEXTJS_VERSION in 10 11 12; do
     # failure messages
     args=$*
     if [[ ! $args ]]; then
-      args="--silent"
+      # args="--silent"
+      args=""
     fi
 
     # we keep this updated as we run the tests, so that if it's ever non-zero, we can bail

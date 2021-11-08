@@ -19,14 +19,16 @@ const createRequestInterceptor = env => {
       return request.continue();
     }
 
+    const shouldLog = env.argv.debug && env.argv.debug.requests;
+
     if (isEventRequest(request)) {
-      logIf(env.argv.debug, 'Intercepted Event', extractEventFromRequest(request), env.argv.depth);
+      logIf(shouldLog, 'Intercepted Event', extractEventFromRequest(request), env.argv.depth);
       env.requests.events.push(request);
     } else if (isSessionRequest(request)) {
-      logIf(env.argv.debug, 'Intercepted Session', extractEnvelopeFromRequest(request), env.argv.depth);
+      logIf(shouldLog, 'Intercepted Session', extractEnvelopeFromRequest(request), env.argv.depth);
       env.requests.sessions.push(request);
     } else if (isTransactionRequest(request)) {
-      logIf(env.argv.debug, 'Intercepted Transaction', extractEnvelopeFromRequest(request), env.argv.depth);
+      logIf(shouldLog, 'Intercepted Transaction', extractEnvelopeFromRequest(request), env.argv.depth);
       env.requests.transactions.push(request);
     }
 

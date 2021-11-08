@@ -1,6 +1,6 @@
 function link_package() {
   local package_abs_path=$1
-  local package_name=$2
+  local package_name=$(basename $package_abs_path)
 
   echo "Setting up @sentry/${package_name} for linking"
   pushd $package_abs_path
@@ -21,7 +21,7 @@ function linkcli() {
 
   # check to make sure the repo directory exists
   if [[ -d $LINKED_CLI_REPO ]]; then
-    link_package $LINKED_CLI_REPO "cli"
+    link_package $LINKED_CLI_REPO
   else
     # the $1 lets us insert a string in that spot if one is passed to `linkcli` (useful for when we're calling this from
     # within another linking function)
@@ -36,7 +36,7 @@ function linkplugin() {
 
   # check to make sure the repo directory exists
   if [[ -d $LINKED_PLUGIN_REPO ]]; then
-    link_package $LINKED_PLUGIN_REPO "webpack-plugin"
+    link_package $LINKED_PLUGIN_REPO
 
     # the webpack plugin depends on `@sentry/cli`, so if we're also using a linked version of the cli package, the
     # plugin needs to link to it, too
@@ -48,4 +48,18 @@ function linkplugin() {
   else
     echo "ERROR: Can't link @sentry/wepack-plugin because $LINKED_PLUGIN_REPO does not exist."
   fi
+}
+
+function link_all() {
+  local packages_dir=$1
+
+  for abs_package_path in $packages_dir; do
+    # these are under the `@sentry-internal` namespace (whereas our function
+    # is looking in the `@sentry` namespace), and besides, there's no reason to link them
+    if [[ "eslint-config-sdk eslint-plugin-sdk typescript" =~ $(basename $abs_package_path) ]]; then
+      continue
+    fi
+
+    link_package $abs_package_path
+  done
 }

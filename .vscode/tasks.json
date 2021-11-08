@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build nextjs integration test app",
+			"type": "npm",
+			"script": "build",
+			"path": "packages/nextjs/test/integration/",
+			"group": "build",
+			"problemMatcher": [],
+			"detail": "next build"
+		}
+	]
+}

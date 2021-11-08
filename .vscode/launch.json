@@ -41,6 +41,9 @@
         "${relativeFile}"
       ],
       "sourceMaps": true,
+      "skipFiles": [
+        "<node_internals>/**", "${workspaceFolder}/node_modules/tslib/**/*"
+      ],
       "smartStep": true,
        // otherwise it goes to the VSCode debug terminal, which prints the test output or console logs (depending on
        // "outputCapture" option here; default is to show console logs), but not both
@@ -56,6 +59,7 @@
       "name": "Debug @sentry/nextjs integration tests - just open file",
       "type": "node",
       "cwd": "${workspaceFolder}/packages/nextjs",
+      "preLaunchTask": "build nextjs integration test app",
       "request": "launch",
       // TODO create a build task
       // "preLaunchTask": "yarn build",
@@ -73,6 +77,18 @@
       "skipFiles": [
         "<node_internals>/**", "**/tslib/**"
       ],
+      "outFiles": [
+        "${workspaceFolder}/**/dist/**/*.js",
+        "${workspaceFolder}/packages/nextjs/test/integration/.next/**/*.js",
+        "!**/node_modules/**"
+      ],
+      // "resolveSourceMapLocations": [
+      //   "${workspaceFolder}/**/dist/**",
+      //   "${workspaceFolder}/packages/nextjs/test/integration/.next/**",
+      //   "!**/node_modules/**"
+      // ],
+      "internalConsoleOptions": "openOnSessionStart"
+
     },
   ]
 }

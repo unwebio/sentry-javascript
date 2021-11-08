@@ -18,7 +18,7 @@
     "pack:changed": "lerna run pack --since",
     "prepublishOnly": "lerna run --stream --concurrency 1 prepublishOnly",
     "postpublish": "make publish-docs && lerna run --stream --concurrency 1 postpublish",
-    "test": "lerna run --stream --concurrency 1 --sort test"
+    "test": "export NODE_OPTIONS='--stack-trace-limit=10000' && yarn lerna run --stream --concurrency 1 --sort test"
   },
   "volta": {
     "node": "14.17.0",

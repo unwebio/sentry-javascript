@@ -14,10 +14,13 @@ const argv = yargs(process.argv.slice(2))
   .option('silent', {
     type: 'boolean',
     description: 'Hide all stdout and console logs except test results',
+    conflicts: ['debug'],
   })
   .option('debug', {
-    type: 'boolean',
-    description: 'Log intercepted requests and debug messages',
+    type: 'string',
+    description: 'Log intercepted requests and/or debug messages',
+    choices: ['', 'requests', 'logs'], // empty string will be equivalent to "logs"
+    conflicts: ['silent'],
   })
   .option('depth', {
     type: 'number',
@@ -82,6 +85,18 @@ module.exports.run = async ({
         scenarios.forEach(s => log(`⊙ Scenario found: ${path.basename(s)}`));
       }
     }
+
+    // Turn on the SDK's `debug` option or the logging of intercepted requests, or both
+    if (argv.debug !== undefined) {
+      if (argv.debug === '' || argv.debug === 'logs' || (Array.isArray(argv.debug) && argv.debug.includes('logs'))) {
+        process.env.SDK_DEBUG = true;
+      }
+      // this
+      argv.debug = {
+        requests: argv.debug === 'requests' || (Array.isArray(argv.debug) && argv.debug.includes('requests')),
+      };
+    }
+
     // Silence all the unnecessary server noise. We are capturing errors manualy anyway.
     if (argv.silent) {
       for (const level of ['log', 'warn', 'info', 'error']) {

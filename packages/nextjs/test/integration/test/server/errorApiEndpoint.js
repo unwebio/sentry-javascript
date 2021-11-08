@@ -47,8 +47,11 @@ module.exports = async ({ url: urlBase, argv }) => {
     argv,
     'errorApiEndpoint',
   );
-
-  await getAsync(url);
+  try {
+    await getAsync(url);
+  } catch (err) {
+    assert(err.message === 'API Error');
+  }
   await sleep(250);
 
   assert.ok(capturedErrorRequest.isDone(), 'Did not intercept expected error request');
