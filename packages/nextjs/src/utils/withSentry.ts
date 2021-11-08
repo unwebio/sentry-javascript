@@ -114,6 +114,7 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
         // to take, it can happen that the same thrown object gets caught in two different ways, and flagging it is a
         // way to prevent it from actually being reported twice.)
         const objectifiedErr = objectify(e);
+
         if (currentScope) {
           currentScope.addEventProcessor(event => {
             addExceptionMechanism(event, {
@@ -126,6 +127,7 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
             });
             return event;
           });
+
           captureException(objectifiedErr);
         }
 
@@ -135,11 +137,20 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
         res.statusCode = 500;
         res.statusMessage = 'Internal Server Error';
 
-        await finishSentryWork(res);
+        // Make sure we have a chance to finish the transaction and flush events to Sentry before the handler errors
+        // out. (Apps which are deployed on Vercel run their API routes in lambdas, and those lambdas will shut down the
+        // moment they detect an error, so it's important to get this done before rethrowing the error.)
+        await finishSentryProcessing(res);
+
+        // We rethrow here so that nextjs can do with the error whatever it would normally do. (Sometimes "whatever it
+        // would normally do" is to allow the error to bubble up to the global handlers - another reason we need to mark
+        // the error as already having been captured.)
         throw objectifiedErr;
       }
     });
 
+    // Since API route handlers are all async, nextjs always awaits the return value (meaning it's fine for us to return
+    // a promise here rather than a real result)
     return boundHandler();
   };
 };
@@ -149,7 +160,7 @@ type WrappedResponseEndMethod = AugmentedNextApiResponse['end'];
 
 function wrapEndMethod(origEnd: ResponseEndMethod): WrappedResponseEndMethod {
   return async function newEnd(this: AugmentedNextApiResponse, ...args: unknown[]) {
-    await finishSentryWork(this);
+    await finishSentryProcessing(this);
 
     // Flip `finished` back to false so that the real `res.end()` method doesn't throw `ERR_STREAM_WRITE_AFTER_END`
     // (which it will if we don't do this, because it expects that *it* will be the one to mark the response finished).
@@ -159,7 +170,7 @@ function wrapEndMethod(origEnd: ResponseEndMethod): WrappedResponseEndMethod {
   };
 }
 
-async function finishSentryWork(res: AugmentedNextApiResponse): Promise<void> {
+async function finishSentryProcessing(res: AugmentedNextApiResponse): Promise<void> {
   const { __sentryTransaction: transaction } = res;
 
   if (transaction) {
