@@ -12,7 +12,6 @@ type WrappedNextApiHandler = NextApiHandler;
 
 export type AugmentedNextApiResponse = NextApiResponse & {
   __sentryTransaction?: Transaction;
-  __sentryCapturedError?: unknown;
 };
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
@@ -77,8 +76,7 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
       }
 
       try {
-        console.log('about to call handler');
-        const handlerResult = await origHandler(req, res); // Call original handler
+        const handlerResult = await origHandler(req, res);
 
         // Temporarily mark the response as finished, as a hack to get nextjs not to complain that we're coming back
         // from the handler successfully without `res.end()` having completed its work. This is necessary (and we know
@@ -107,22 +105,10 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
         //   check, on the other hand, happens synchronously immediately after the request handler, so in the same event
         //   loop. So as long as we wait to flip `res.finished` back to `false` until after the `setImmediate` callback
         //   has run, we know we'll be safely in the next event loop when we do so. Ta-dah! Everyone wins.
-
         res.finished = true;
-        // res.headersSent = true;
-        debugger;
-        // Object.defineProperty(res, 'headersSent', {
-        //   get() {
-        //     return true;
-        //   },
-        // });
 
         return handlerResult;
       } catch (e) {
-        console.log('in catch right after calling handler');
-
-        // console.error(e);
-
         // In case we have a primitive, wrap it in the equivalent wrapper class (string -> String, etc.) so that we can
         // store a seen flag on it. (Because of the one-way-on-Vercel-one-way-off-of-Vercel approach we've been forced
         // to take, it can happen that the same thrown object gets caught in two different ways, and flagging it is a
@@ -130,7 +116,6 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
         const objectifiedErr = objectify(e);
         if (currentScope) {
           currentScope.addEventProcessor(event => {
-            console.log('in event processor adding exception mechanism');
             addExceptionMechanism(event, {
               type: 'instrument',
               handled: true,
@@ -141,10 +126,8 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
             });
             return event;
           });
-          console.log('about to capture the error');
           captureException(objectifiedErr);
         }
-        // (res as AugmentedNextApiResponse).__sentryCapturedError = objectifiedErr;
 
         // Because we're going to finish and send the transaction before passing the error onto nextjs, it won't yet
         // have had a chance to set the status to 500, so unless we do it ourselves now, we'll incorrectly report that
@@ -152,12 +135,8 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
         res.statusCode = 500;
         res.statusMessage = 'Internal Server Error';
 
-        console.log('about to call finishSentryWork');
         await finishSentryWork(res);
-        debugger;
-        console.log('about to rethrow error');
         throw objectifiedErr;
-        // return;
       }
     });
 
@@ -169,17 +148,13 @@ type ResponseEndMethod = AugmentedNextApiResponse['end'];
 type WrappedResponseEndMethod = AugmentedNextApiResponse['end'];
 
 function wrapEndMethod(origEnd: ResponseEndMethod): WrappedResponseEndMethod {
-  console.log('wrapping end method');
   return async function newEnd(this: AugmentedNextApiResponse, ...args: unknown[]) {
-    console.log('in newEnd');
-
     await finishSentryWork(this);
 
-    // flip `finished` back to false so that the real `res.end()` method doesn't throw `ERR_STREAM_WRITE_AFTER_END`
+    // Flip `finished` back to false so that the real `res.end()` method doesn't throw `ERR_STREAM_WRITE_AFTER_END`
     // (which it will if we don't do this, because it expects that *it* will be the one to mark the response finished).
     this.finished = false;
 
-    console.log('about to call origEnd');
     return origEnd.call(this, ...args);
   };
 }
@@ -205,8 +180,7 @@ async function finishSentryWork(res: AugmentedNextApiResponse): Promise<void> {
   // ends. If there was an error, rethrow it so that the normal exception-handling mechanisms can apply.
   try {
     logger.log('Flushing events...');
-    const flushResult = await flush(2000);
-    console.log({ flushResult });
+    await flush(2000);
     logger.log('Done flushing events');
   } catch (e) {
     logger.log(`Error while flushing events:\n${e}`);
