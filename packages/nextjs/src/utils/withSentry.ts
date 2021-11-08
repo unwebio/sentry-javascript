@@ -78,11 +78,50 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
 
       try {
         console.log('about to call handler');
-        return await origHandler(req, res);
+        const handlerResult = await origHandler(req, res); // Call original handler
+
+        // Temporarily mark the response as finished, as a hack to get nextjs not to complain that we're coming back
+        // from the handler successfully without `res.end()` having completed its work. This is necessary (and we know
+        // we can do it safely) for a few reasons:
+        //
+        // - Normally, `res.end()` is sync and completes (setting `res.finished` to `true`) before the request handler
+        //   returns, as part of the handler sending data back to the client. As soon as the handler is done, nextjs
+        //   checks to make sure this has happened and the response is finished, and it complains if it isn't.
+        //
+        // - In order to prevent the lambda running the route handler from shutting down before we can send events to
+        //   Sentry, we monkeypatch `res.end()` so that we can call `flush()`, wait for it to finish, and only then
+        //   allow the response to be marked complete. This turns the normally-sync `res.end()` into an async function,
+        //   which isn't awaited because it's assumed to still be sync. So when nextjs runs aforementioned check, it
+        //   looks like the handler hasn't sent a response, even though in reality is just hasn't yet finished.
+        //
+        // - In order to trick nextjs into not complaining, we can set `res.finished` to `true`. If we do that, though,
+        //   `res.end()` gets mad because it thinks *it* should be the one to get to mark the response complete. We
+        //   therefore need to flip it back to `false` after nextjs's check but before the original `res.end()` is
+        //   called.
+        //
+        // - The second part is easy - we control when the original `res.end()` is called, so we can do the flipping
+        //   right beforehand and `res.end()` will be none the wiser. The first part isn't as obvious. How do we know we
+        //   won't end up with a race condition, such that the flipping to `false` might happen before the check,
+        //   negating the entire purpose of this hack? Fortunately, before it's done, our async `res.end()` wrapper has
+        //   to await a `setImmediate()` callback, guaranteeing its run lasts at least until the next event loop. The
+        //   check, on the other hand, happens synchronously immediately after the request handler, so in the same event
+        //   loop. So as long as we wait to flip `res.finished` back to `false` until after the `setImmediate` callback
+        //   has run, we know we'll be safely in the next event loop when we do so. Ta-dah! Everyone wins.
+
+        res.finished = true;
+        // res.headersSent = true;
+        debugger;
+        // Object.defineProperty(res, 'headersSent', {
+        //   get() {
+        //     return true;
+        //   },
+        // });
+
+        return handlerResult;
       } catch (e) {
         console.log('in catch right after calling handler');
 
-        console.error(e);
+        // console.error(e);
 
         // In case we have a primitive, wrap it in the equivalent wrapper class (string -> String, etc.) so that we can
         // store a seen flag on it. (Because of the one-way-on-Vercel-one-way-off-of-Vercel approach we've been forced
@@ -105,13 +144,24 @@ export const withSentry = (origHandler: NextApiHandler): WrappedNextApiHandler =
           console.log('about to capture the error');
           captureException(objectifiedErr);
         }
-        (res as AugmentedNextApiResponse).__sentryCapturedError = objectifiedErr;
-        console.log('about to call res.end()');
-        res.end();
+        // (res as AugmentedNextApiResponse).__sentryCapturedError = objectifiedErr;
+
+        // Because we're going to finish and send the transaction before passing the error onto nextjs, it won't yet
+        // have had a chance to set the status to 500, so unless we do it ourselves now, we'll incorrectly report that
+        // the transaction was error-free
+        res.statusCode = 500;
+        res.statusMessage = 'Internal Server Error';
+
+        console.log('about to call finishSentryWork');
+        await finishSentryWork(res);
+        debugger;
+        console.log('about to rethrow error');
+        throw objectifiedErr;
+        // return;
       }
     });
 
-    return await boundHandler();
+    return boundHandler();
   };
 };
 
@@ -122,37 +172,42 @@ function wrapEndMethod(origEnd: ResponseEndMethod): WrappedResponseEndMethod {
   console.log('wrapping end method');
   return async function newEnd(this: AugmentedNextApiResponse, ...args: unknown[]) {
     console.log('in newEnd');
-    const { __sentryTransaction: transaction, __sentryCapturedError: capturedError } = this;
 
-    if (transaction) {
-      transaction.setHttpStatus(this.statusCode);
+    await finishSentryWork(this);
 
-      // Push `transaction.finish` to the next event loop so open spans have a better chance of finishing before the
-      // transaction closes, and make sure to wait until that's done before flushing events
-      const transactionFinished: Promise<void> = new Promise(resolve => {
-        setImmediate(() => {
-          transaction.finish();
-          resolve();
-        });
-      });
-      await transactionFinished;
-    }
+    // flip `finished` back to false so that the real `res.end()` method doesn't throw `ERR_STREAM_WRITE_AFTER_END`
+    // (which it will if we don't do this, because it expects that *it* will be the one to mark the response finished).
+    this.finished = false;
 
-    // Flush the event queue to ensure that events get sent to Sentry before the response is finished and the lambda
-    // ends. If there was an error, rethrow it so that the normal exception-handling mechanisms can apply.
-    try {
-      logger.log('Flushing events...');
-      await flush(2000);
-      logger.log('Done flushing events');
-    } catch (e) {
-      logger.log(`Error while flushing events:\n${e}`);
-    }
-
-    if (capturedError) {
-      console.log('about to rethrow error');
-      throw capturedError;
-    }
     console.log('about to call origEnd');
     return origEnd.call(this, ...args);
   };
+}
+
+async function finishSentryWork(res: AugmentedNextApiResponse): Promise<void> {
+  const { __sentryTransaction: transaction } = res;
+
+  if (transaction) {
+    transaction.setHttpStatus(res.statusCode);
+
+    // Push `transaction.finish` to the next event loop so open spans have a better chance of finishing before the
+    // transaction closes, and make sure to wait until that's done before flushing events
+    const transactionFinished: Promise<void> = new Promise(resolve => {
+      setImmediate(() => {
+        transaction.finish();
+        resolve();
+      });
+    });
+    await transactionFinished;
+  }
+
+  // Flush the event queue to ensure that events get sent to Sentry before the response is finished and the lambda
+  // ends. If there was an error, rethrow it so that the normal exception-handling mechanisms can apply.
+  try {
+    logger.log('Flushing events...');
+    await flush(2000);
+    logger.log('Done flushing events');
+  } catch (e) {
+    logger.log(`Error while flushing events:\n${e}`);
+  }
 }
