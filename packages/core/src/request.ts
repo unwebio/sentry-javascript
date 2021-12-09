@@ -62,6 +62,9 @@ export function eventToSentryRequest(event: Event, api: API): SentryRequest {
     event.debug_meta = metadata;
   }
 
+  // prevent this data from being sent to sentry
+  delete event.processingMetadata;
+
   const req: SentryRequest = {
     body: JSON.stringify(sdkInfo ? enhanceEventWithSdkInfo(event, api.metadata.sdk) : event),
     type: eventType,
