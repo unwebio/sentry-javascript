@@ -133,7 +133,7 @@ export class Transaction extends SpanClass implements TransactionInterface {
       timestamp: this.endTimestamp,
       transaction: this.name,
       type: 'transaction',
-      debug_meta: this.metadata,
+      processingMetadata: this.metadata,
     };
 
     const hasMeasurements = Object.keys(this._measurements).length > 0;

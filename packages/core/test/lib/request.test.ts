@@ -40,11 +40,12 @@ describe('eventToSentryRequest', () => {
       transaction: '/dogs/are/great/',
       type: 'transaction',
       user: { id: '1121', username: 'CharlieDog', ip_address: '11.21.20.12' },
+      processingMetadata: {},
     };
   });
 
   it('adds transaction sampling information to item header', () => {
-    event.debug_meta = { transactionSampling: { method: TransactionSamplingMethod.Rate, rate: 0.1121 } };
+    event.processingMetadata = { transactionSampling: { method: TransactionSamplingMethod.Rate, rate: 0.1121 } };
 
     const result = eventToSentryRequest(event, api);
     const envelope = parseEnvelopeRequest(result);
@@ -54,30 +55,6 @@ describe('eventToSentryRequest', () => {
         sample_rates: [{ id: TransactionSamplingMethod.Rate, rate: 0.1121 }],
       }),
     );
-  });
-
-  it('removes transaction sampling information (and only that) from debug_meta', () => {
-    event.debug_meta = {
-      transactionSampling: { method: TransactionSamplingMethod.Sampler, rate: 0.1121 },
-      dog: 'Charlie',
-    } as DebugMeta;
-
-    const result = eventToSentryRequest(event, api);
-    const envelope = parseEnvelopeRequest(result);
-
-    expect('transactionSampling' in envelope.event.debug_meta).toBe(false);
-    expect('dog' in envelope.event.debug_meta).toBe(true);
-  });
-
-  it('removes debug_meta entirely if it ends up empty', () => {
-    event.debug_meta = {
-      transactionSampling: { method: TransactionSamplingMethod.Rate, rate: 0.1121 },
-    } as DebugMeta;
-
-    const result = eventToSentryRequest(event, api);
-    const envelope = parseEnvelopeRequest(result);
-
-    expect('debug_meta' in envelope.event).toBe(false);
   });
 
   it('adds sdk info to envelope header', () => {
@@ -132,10 +109,10 @@ describe('eventToSentryRequest', () => {
   });
 
   it('uses tunnel as the url if it is configured', () => {
-    const tunnelRequest = eventToSentryRequest(event, new API(ingestDsn, {}, tunnel));
+    const tunnelRequest = eventToSentryRequest({ ...event }, new API(ingestDsn, {}, tunnel));
     expect(tunnelRequest.url).toEqual(tunnel);
 
-    const defaultRequest = eventToSentryRequest(event, new API(ingestDsn, {}));
+    const defaultRequest = eventToSentryRequest({ ...event }, new API(ingestDsn, {}));
     expect(defaultRequest.url).toEqual(ingestUrl);
   });
 
