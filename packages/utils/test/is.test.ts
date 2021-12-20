@@ -1,6 +1,6 @@
 import { isDOMError, isDOMException, isError, isErrorEvent, isInstanceOf, isPrimitive, isThenable } from '../src/is';
 import { supportsDOMError, supportsDOMException, supportsErrorEvent } from '../src/supports';
-import { makeSyncPromise } from '../src/syncpromise';
+import { makeSyncPromise, makePlatformResolvedPromise } from '../src/syncpromise';
 
 class SentryError extends Error {
   public name: string;
@@ -76,6 +76,7 @@ describe('isThenable()', () => {
   test('should work as advertised', () => {
     expect(isThenable(Promise.resolve(true))).toEqual(true);
     expect(isThenable(makeSyncPromise().resolve(true))).toEqual(true);
+    expect(isThenable(makePlatformResolvedPromise(true))).toEqual(true);
 
     expect(isThenable(undefined)).toEqual(false);
     expect(isThenable(null)).toEqual(false);

@@ -18,7 +18,9 @@ import {
   isPrimitive,
   isThenable,
   logger,
-  makeSyncPromise,
+  makePlatformPromise,
+  makePlatformRejectedPromise,
+  makePlatformResolvedPromise,
   normalize,
   SentryError,
   truncate,
@@ -294,7 +296,7 @@ export abstract class BaseClient<B extends Backend, O extends Options> implement
    * `false` otherwise
    */
   protected _isClientDoneProcessing(timeout?: number): PromiseLike<boolean> {
-    return makeSyncPromise(resolve => {
+    return makePlatformPromise<boolean>(resolve => {
       let ticked: number = 0;
       const tick: number = 1;
 
@@ -356,7 +358,7 @@ export abstract class BaseClient<B extends Backend, O extends Options> implement
     }
 
     // We prepare the result here with a resolved Event.
-    let result = makeSyncPromise().resolve<Event | null>(prepared);
+    let result = makePlatformResolvedPromise<Event | null>(prepared);
 
     // This should be the last thing called, since we want that
     // {@link Hub.addEventProcessor} gets the finished prepared event.
@@ -531,7 +533,7 @@ export abstract class BaseClient<B extends Backend, O extends Options> implement
     }
 
     if (!this._isEnabled()) {
-      return makeSyncPromise().reject(new SentryError('SDK not enabled, will not capture event.'));
+      return makePlatformRejectedPromise(new SentryError('SDK not enabled, will not capture event.'));
     }
 
     const isTransaction = event.type === 'transaction';
@@ -540,7 +542,7 @@ export abstract class BaseClient<B extends Backend, O extends Options> implement
     // Sampling for transaction happens somewhere else
     if (!isTransaction && typeof sampleRate === 'number' && Math.random() > sampleRate) {
       recordLostEvent('sample_rate', 'event');
-      return makeSyncPromise().reject(
+      return makePlatformRejectedPromise(
         new SentryError(
           `Discarding event because it's not included in the random sample (sampling rate = ${sampleRate})`,
         ),
