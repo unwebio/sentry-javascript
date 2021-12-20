@@ -356,7 +356,7 @@ export abstract class BaseClient<B extends Backend, O extends Options> implement
     }
 
     // We prepare the result here with a resolved Event.
-    let result = SyncPromise.resolve<Event | null>(prepared);
+    let result = makeSyncPromise().resolve<Event | null>(prepared);
 
     // This should be the last thing called, since we want that
     // {@link Hub.addEventProcessor} gets the finished prepared event.
@@ -531,7 +531,7 @@ export abstract class BaseClient<B extends Backend, O extends Options> implement
     }
 
     if (!this._isEnabled()) {
-      return SyncPromise.reject(new SentryError('SDK not enabled, will not capture event.'));
+      return makeSyncPromise().reject(new SentryError('SDK not enabled, will not capture event.'));
     }
 
     const isTransaction = event.type === 'transaction';
@@ -540,7 +540,7 @@ export abstract class BaseClient<B extends Backend, O extends Options> implement
     // Sampling for transaction happens somewhere else
     if (!isTransaction && typeof sampleRate === 'number' && Math.random() > sampleRate) {
       recordLostEvent('sample_rate', 'event');
-      return SyncPromise.reject(
+      return makeSyncPromise().reject(
         new SentryError(
           `Discarding event because it's not included in the random sample (sampling rate = ${sampleRate})`,
         ),

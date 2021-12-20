@@ -62,6 +62,7 @@ export const defaultIntegrations = [
  * ```
  *
  * import * as Sentry from '@sentry/browser';
+import { makeSyncPromise } from '../../utils/src/syncpromise';
  * Sentry.captureMessage('Hello, world!');
  * Sentry.captureException(new Error('Good bye'));
  * Sentry.captureEvent({
@@ -162,7 +163,7 @@ export function flush(timeout?: number): PromiseLike<boolean> {
     return client.flush(timeout);
   }
   logger.warn('Cannot flush events. No client defined.');
-  return SyncPromise.resolve(false);
+  return makeSyncPromise().resolve(false);
 }
 
 /**
@@ -179,7 +180,7 @@ export function close(timeout?: number): PromiseLike<boolean> {
     return client.close(timeout);
   }
   logger.warn('Cannot flush events and disable SDK. No client defined.');
-  return SyncPromise.resolve(false);
+  return makeSyncPromise().resolve(false);
 }
 
 /**
