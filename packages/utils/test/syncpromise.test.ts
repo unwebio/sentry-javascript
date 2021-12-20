@@ -1,4 +1,9 @@
-import { makeSyncPromise, SyncPromise } from '../src/syncpromise';
+import {
+  SyncPromise,
+  makeSyncPromise,
+  makePlatformResolvedPromise,
+  makePlatformRejectedPromise,
+} from '../src/syncpromise';
 
 describe('SyncPromise', () => {
   test('simple', () => {
@@ -17,9 +22,9 @@ describe('SyncPromise', () => {
     return makeSyncPromise<number>(resolve => {
       resolve(42);
     })
-      .then(_ => makeSyncPromise().resolve('a'))
-      .then(_ => makeSyncPromise().resolve(0.1))
-      .then(_ => makeSyncPromise().resolve(false))
+      .then(_ => makePlatformResolvedPromise('a'))
+      .then(_ => makePlatformResolvedPromise(0.1))
+      .then(_ => makePlatformResolvedPromise(false))
       .then(val => {
         expect(val).toBe(false);
       });
@@ -84,7 +89,8 @@ describe('SyncPromise', () => {
     return (
       c
         // @ts-ignore Argument of type 'PromiseLike<string>' is not assignable to parameter of type 'SyncPromise<string>'
-        .then(val => f(makeSyncPromise().resolve('x'), val))
+        .then(val => f(makePlatformResolvedPromise('x'), val))
+        // @ts-ignore Argument of type 'SyncPromise<string>' is not assignable to parameter of type 'string'
         .then(val => f(b, val))
         // @ts-ignore Argument of type 'SyncPromise<string>' is not assignable to parameter of type 'string'
         .then(val => f(a, val))
@@ -97,7 +103,7 @@ describe('SyncPromise', () => {
   test('simple static', () => {
     expect.assertions(1);
 
-    const p = makeSyncPromise().resolve(10);
+    const p = makePlatformResolvedPromise(10);
     return p.then(val => {
       expect(val).toBe(10);
     });
@@ -259,7 +265,7 @@ describe('SyncPromise', () => {
     })
       .then(value => {
         expect(value).toEqual(2);
-        return makeSyncPromise().reject('wat');
+        return makePlatformRejectedPromise('wat');
       })
       .then(null, reason => {
         expect(reason).toBe('wat');

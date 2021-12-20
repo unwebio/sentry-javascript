@@ -62,7 +62,6 @@ export const defaultIntegrations = [
  * ```
  *
  * import * as Sentry from '@sentry/browser';
-import { makeSyncPromise } from '../../utils/src/syncpromise';
  * Sentry.captureMessage('Hello, world!');
  * Sentry.captureException(new Error('Good bye'));
  * Sentry.captureEvent({

@@ -1,7 +1,16 @@
 import { isDOMError, isDOMException, isError, isErrorEvent, isInstanceOf, isPrimitive, isThenable } from '../src/is';
 import { supportsDOMError, supportsDOMException, supportsErrorEvent } from '../src/supports';
 import { makeSyncPromise, makePlatformResolvedPromise } from '../src/syncpromise';
-import { SentryError } from '../src/error';
+
+class SentryError extends Error {
+  public name: string;
+
+  public constructor(public message: string) {
+    super(message);
+    this.name = new.target.prototype.constructor.name;
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
 
 if (supportsDOMError()) {
   describe('isDOMError()', () => {

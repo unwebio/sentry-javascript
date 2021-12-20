@@ -1,31 +1,11 @@
 import { SentryError } from './error';
 import { makePlatformPromise, makePlatformRejectedPromise, makePlatformResolvedPromise } from './syncpromise';
 
-function allPromises<U = unknown>(collection: Array<U | PromiseLike<U>>): PromiseLike<U[]> {
-  return makePlatformPromise<U[]>((resolve, reject) => {
-    if (collection.length === 0) {
-      resolve(null);
-      return;
-    }
-
-    let counter = collection.length;
-    collection.forEach(item => {
-      void makePlatformResolvedPromise(item)
-        .then(() => {
-          // eslint-disable-next-line no-plusplus
-          if (--counter === 0) {
-            resolve(null);
-          }
-        })
-        .then(null, reject);
-    });
-  });
-}
-
 export interface PromiseBuffer<T> {
-  length(): number;
+  // exposes the internal array so tests can assert on the state of it.
+  // XXX: this really should not be public api.
+  $: Array<PromiseLike<T>>;
   add(taskProducer: () => PromiseLike<T>): PromiseLike<T>;
-  remove(task: PromiseLike<T>): PromiseLike<T>;
   drain(timeout?: number): PromiseLike<boolean>;
 }
 
@@ -35,10 +15,6 @@ export interface PromiseBuffer<T> {
  */
 export function makePromiseBuffer<T>(limit?: number): PromiseBuffer<T> {
   const buffer: Array<PromiseLike<T>> = [];
-
-  function length(): number {
-    return buffer.length;
-  }
 
   function isReady(): boolean {
     return limit === undefined || buffer.length < limit;
@@ -98,7 +74,13 @@ export function makePromiseBuffer<T>(limit?: number): PromiseBuffer<T> {
    * `false` otherwise
    */
   function drain(timeout?: number): PromiseLike<boolean> {
-    return makePlatformPromise<boolean>(resolve => {
+    return makePlatformPromise<boolean>((resolve, reject) => {
+      let counter = buffer.length;
+
+      if (!counter) {
+        return resolve(true);
+      }
+
       // wait for `timeout` ms and then resolve to `false` (if not cancelled first)
       const capturedSetTimeout = setTimeout(() => {
         if (timeout && timeout > 0) {
@@ -107,19 +89,21 @@ export function makePromiseBuffer<T>(limit?: number): PromiseBuffer<T> {
       }, timeout);
 
       // if all promises resolve in time, cancel the timer and resolve to `true`
-      void allPromises(buffer).then(() => {
-        clearTimeout(capturedSetTimeout);
-        resolve(true);
+      buffer.forEach(item => {
+        void makePlatformResolvedPromise(item).then(() => {
+          // eslint-disable-next-line no-plusplus
+          if (!--counter) {
+            clearTimeout(capturedSetTimeout);
+            resolve(true);
+          }
+        }, reject);
       });
     });
   }
 
-  const promiseBuffer: PromiseBuffer<T> = {
-    length,
+  return {
+    $: buffer,
     add,
-    remove,
     drain,
   };
-
-  return promiseBuffer;
 }
