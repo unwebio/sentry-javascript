@@ -1,8 +1,8 @@
 import { SentryError } from './error';
-import { SyncPromise } from './syncpromise';
+import { makeSyncPromise } from './syncpromise';
 
 function allPromises<U = unknown>(collection: Array<U | PromiseLike<U>>): PromiseLike<U[]> {
-  return new SyncPromise<U[]>((resolve, reject) => {
+  return makeSyncPromise<U[]>((resolve, reject) => {
     if (collection.length === 0) {
       resolve(null);
       return;
@@ -10,7 +10,8 @@ function allPromises<U = unknown>(collection: Array<U | PromiseLike<U>>): Promis
 
     let counter = collection.length;
     collection.forEach(item => {
-      void SyncPromise.resolve(item)
+      void makeSyncPromise()
+        .resolve(item)
         .then(() => {
           // eslint-disable-next-line no-plusplus
           if (--counter === 0) {
@@ -66,7 +67,7 @@ export function makePromiseBuffer<T>(limit?: number): PromiseBuffer<T> {
    */
   function add(taskProducer: () => PromiseLike<T>): PromiseLike<T> {
     if (!isReady()) {
-      return SyncPromise.reject(new SentryError('Not adding Promise due to buffer limit reached.'));
+      return makeSyncPromise().reject(new SentryError('Not adding Promise due to buffer limit reached.'));
     }
 
     // start the task and add its promise to the queue
@@ -97,7 +98,7 @@ export function makePromiseBuffer<T>(limit?: number): PromiseBuffer<T> {
    * `false` otherwise
    */
   function drain(timeout?: number): PromiseLike<boolean> {
-    return new SyncPromise<boolean>(resolve => {
+    return makeSyncPromise<boolean>(resolve => {
       // wait for `timeout` ms and then resolve to `false` (if not cancelled first)
       const capturedSetTimeout = setTimeout(() => {
         if (timeout && timeout > 0) {

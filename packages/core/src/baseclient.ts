@@ -18,9 +18,9 @@ import {
   isPrimitive,
   isThenable,
   logger,
+  makeSyncPromise,
   normalize,
   SentryError,
-  SyncPromise,
   truncate,
   uuid4,
 } from '@sentry/utils';
@@ -294,7 +294,7 @@ export abstract class BaseClient<B extends Backend, O extends Options> implement
    * `false` otherwise
    */
   protected _isClientDoneProcessing(timeout?: number): PromiseLike<boolean> {
-    return new SyncPromise(resolve => {
+    return makeSyncPromise(resolve => {
       let ticked: number = 0;
       const tick: number = 1;
 
