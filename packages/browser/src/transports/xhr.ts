@@ -1,6 +1,6 @@
 import { eventToSentryRequest, sessionToSentryRequest } from '@sentry/core';
 import { Event, Response, SentryRequest, Session } from '@sentry/types';
-import { makeSyncPromise, SentryError } from '@sentry/utils';
+import { makePlatformPromise, SentryError } from '@sentry/utils';
 
 import { BaseTransport } from './base';
 
@@ -40,7 +40,7 @@ export class XHRTransport extends BaseTransport {
 
     return this._buffer
       .add(() =>
-        makeSyncPromise<Response>((resolve, reject) => {
+        makePlatformPromise<Response>((resolve, reject) => {
           const request = new XMLHttpRequest();
 
           request.onreadystatechange = (): void => {

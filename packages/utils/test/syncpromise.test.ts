@@ -1,8 +1,8 @@
 import {
-  SyncPromise,
-  makeSyncPromise,
-  makePlatformResolvedPromise,
   makePlatformRejectedPromise,
+  makePlatformResolvedPromise,
+  makeSyncPromise,
+  SyncPromise,
 } from '../src/syncpromise';
 
 describe('SyncPromise', () => {

@@ -1,6 +1,6 @@
 import { eventToSentryRequest, sessionToSentryRequest } from '@sentry/core';
 import { Event, Response, SentryRequest, Session, TransportOptions } from '@sentry/types';
-import { makeSyncPromise, SentryError, supportsReferrerPolicy } from '@sentry/utils';
+import { makePlatformPromise, SentryError, supportsReferrerPolicy } from '@sentry/utils';
 
 import { BaseTransport } from './base';
 import { FetchImpl, getNativeFetchImplementation } from './utils';
@@ -67,7 +67,7 @@ export class FetchTransport extends BaseTransport {
 
     return this._buffer
       .add(() =>
-        makeSyncPromise<Response>((resolve, reject) => {
+        makePlatformPromise<Response>((resolve, reject) => {
           void this._fetch(sentryRequest.url, options)
             .then(response => {
               const headers = {

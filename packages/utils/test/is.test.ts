@@ -1,6 +1,6 @@
 import { isDOMError, isDOMException, isError, isErrorEvent, isInstanceOf, isPrimitive, isThenable } from '../src/is';
 import { supportsDOMError, supportsDOMException, supportsErrorEvent } from '../src/supports';
-import { makeSyncPromise, makePlatformResolvedPromise } from '../src/syncpromise';
+import { makePlatformResolvedPromise,makeSyncPromise } from '../src/syncpromise';
 
 class SentryError extends Error {
   public name: string;
