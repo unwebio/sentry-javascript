@@ -1,5 +1,5 @@
 import { getCurrentHub, initAndBind, Integrations as CoreIntegrations } from '@sentry/core';
-import { addInstrumentationHandler, getGlobalObject, logger, SyncPromise } from '@sentry/utils';
+import { addInstrumentationHandler, getGlobalObject, logger, makeSyncPromise } from '@sentry/utils';
 
 import { BrowserOptions } from './backend';
 import { BrowserClient } from './client';
