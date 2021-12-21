@@ -1,4 +1,5 @@
 import { Event, SdkInfo, SentryRequest, SentryRequestType, Session, SessionAggregates } from '@sentry/types';
+import { dsnToString } from '@sentry/utils';
 
 import { APIDetails, getEnvelopeEndpointWithUrlEncodedAuth, getStoreEndpointWithUrlEncodedAuth } from './api';
 
@@ -33,7 +34,7 @@ export function sessionToSentryRequest(session: Session | SessionAggregates, api
   const envelopeHeaders = JSON.stringify({
     sent_at: new Date().toISOString(),
     ...(sdkInfo && { sdk: sdkInfo }),
-    ...(!!api.tunnel && { dsn: api.dsn.toString() }),
+    ...(!!api.tunnel && { dsn: dsnToString(api.dsn) }),
   });
   const type: SentryRequestType = 'aggregates' in session ? ('sessions' as SentryRequestType) : 'session';
   const itemHeaders = JSON.stringify({
@@ -80,7 +81,7 @@ export function eventToSentryRequest(event: Event, api: APIDetails): SentryReque
       event_id: event.event_id,
       sent_at: new Date().toISOString(),
       ...(sdkInfo && { sdk: sdkInfo }),
-      ...(!!api.tunnel && { dsn: api.dsn.toString() }),
+      ...(!!api.tunnel && { dsn: dsnToString(api.dsn) }),
     });
     const itemHeaders = JSON.stringify({
       type: eventType,

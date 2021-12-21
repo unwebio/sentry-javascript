@@ -3,10 +3,10 @@ import { Event, EventHint, Mechanism, SeverityLevel, Transport, TransportOptions
 import {
   addExceptionMechanism,
   addExceptionTypeValue,
-  Dsn,
   extractExceptionKeysForMessage,
   isError,
   isPlainObject,
+  makeDsn,
   makePlatformPromise,
   normalizeToSize,
 } from '@sentry/utils';
@@ -108,7 +108,7 @@ export class NodeBackend extends BaseBackend<NodeOptions> {
       return super._setupTransport();
     }
 
-    const dsn = new Dsn(this._options.dsn);
+    const dsn = makeDsn(this._options.dsn);
 
     const transportOptions: TransportOptions = {
       ...this._options.transportOptions,
