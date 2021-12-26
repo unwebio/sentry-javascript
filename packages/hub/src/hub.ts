@@ -580,7 +580,8 @@ export function getActiveDomain(): DomainAsCarrier | undefined {
 function getHubFromActiveDomain(registry: Carrier): Hub {
   try {
     const sentry = getMainCarrier().__SENTRY__;
-    const activeDomain = sentry && sentry.extensions && sentry.extensions.domain && sentry.extensions.domain.active;
+    const domainModule = sentry && sentry.extensions && sentry.extensions.domain
+    const activeDomain = domainModule && domainModule.active;
 
     // If there's no active domain, just return global hub
     if (!activeDomain) {
@@ -589,7 +590,9 @@ function getHubFromActiveDomain(registry: Carrier): Hub {
 
     // If there's no hub on current domain, or it's an old API, assign a new one
     if (!hasHubOnCarrier(activeDomain) || getHubFromCarrier(activeDomain).isOlderThan(API_VERSION)) {
-      const registryHubTopStack = getHubFromCarrier(registry).getStackTop();
+      const stack: any[] = domainModule?._stack
+      const parentCarrier = stack[stack.length - 2] || registry
+      const registryHubTopStack = getHubFromCarrier(parentCarrier).getStackTop();
       setHubOnCarrier(activeDomain, new Hub(registryHubTopStack.client, Scope.clone(registryHubTopStack.scope)));
     }
 
